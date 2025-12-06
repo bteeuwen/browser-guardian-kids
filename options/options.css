@@ -243,3 +243,24 @@ input:checked + .slider:before {
 #timeRestrictionsConfig {
   margin-top: 20px;
 }
+
+/* Override section */
+.override-section {
+  margin-top: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border: 2px dashed #ff9800;
+}
+
+.override-section h3 {
+  margin-top: 0;
+  color: #ff9800;
+  font-size: 1.1em;
+}
+
+#overrideStatus {
+  font-weight: 600;
+  color: #ff9800;
+  margin-top: 10px;
+}

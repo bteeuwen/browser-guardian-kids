@@ -4,7 +4,36 @@
 const browser = globalThis.browser || globalThis.chrome;
 
 // ========================================
-// BLOCKED SITES - Edit this list to add/remove blocked websites
+// ALLOWED SITES - Educational/learning sites (ALWAYS accessible)
+// ========================================
+const ALLOWED_SITES = [
+  'accounts.google.*',
+  'basispoort*',
+  'blink.nl*',
+  'ecosia.org',
+  'idp.toegang.org*',
+  'ieplvs*',
+  'kennisnet*',
+  'klasseplan*',
+  'lexipoort*',
+  'matific.com',
+  'matific.eu',
+  'nieuwsbegrip*',
+  'scratch.mit.edu/classes*',
+  'thiememeulenhoff.nl*',
+  'zuluconnect*'
+];
+
+// ========================================
+// ENTERTAINMENT SITES - Fun sites (weekends only, or with override)
+// ========================================
+const ENTERTAINMENT_SITES = [
+  'youtubekids*',
+  'netflix.com/kids*'
+];
+
+// ========================================
+// BLOCKED SITES - Never allowed
 // ========================================
 const BLOCKED_SITES = [
   'facebook.com',
@@ -21,6 +50,8 @@ const BLOCKED_SITES = [
 let settings = {
   enabled: true,
   password: '',
+  entertainmentOverride: false, // Temporary override for entertainment sites
+  entertainmentOverrideExpiry: null, // When the override expires
   timeRestrictions: {
     enabled: false,
     allowedHours: {
@@ -51,7 +82,42 @@ function shouldBlockUrl(url) {
     return false;
   }
 
-  // Check time restrictions
+  // 1. Always allow educational sites
+  for (let pattern of ALLOWED_SITES) {
+    if (pattern && matchesPattern(url, pattern)) {
+      return false; // Explicitly allow
+    }
+  }
+
+  // 2. Check if it's blocked (never allowed)
+  for (let pattern of BLOCKED_SITES) {
+    if (pattern && matchesPattern(url, pattern)) {
+      return true; // Explicitly block
+    }
+  }
+
+  // 3. Check entertainment sites (weekend or override)
+  for (let pattern of ENTERTAINMENT_SITES) {
+    if (pattern && matchesPattern(url, pattern)) {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const isWeekend = currentDay === 0 || currentDay === 6; // Sunday = 0, Saturday = 6
+
+      // Check if override is active and not expired
+      const hasActiveOverride = settings.entertainmentOverride &&
+                                (!settings.entertainmentOverrideExpiry ||
+                                 new Date(settings.entertainmentOverrideExpiry) > now);
+
+      // Allow if weekend OR override is active
+      if (isWeekend || hasActiveOverride) {
+        return false; // Allow entertainment
+      } else {
+        return true; // Block entertainment on weekdays
+      }
+    }
+  }
+
+  // 4. Check time restrictions (for all other sites)
   if (settings.timeRestrictions.enabled) {
     const now = new Date();
     const currentHour = now.getHours();
@@ -71,13 +137,7 @@ function shouldBlockUrl(url) {
     }
   }
 
-  // Check blocked sites list (hardcoded)
-  for (let pattern of BLOCKED_SITES) {
-    if (pattern && matchesPattern(url, pattern)) {
-      return true;
-    }
-  }
-
+  // 5. Everything else is allowed by default
   return false;
 }
 
@@ -123,8 +183,33 @@ browser.browserAction.onClicked.addListener(() => {
 
 // Handle messages from options page
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'getBlockedSites') {
-    sendResponse({ blockedSites: BLOCKED_SITES });
+  if (message.type === 'getSiteLists') {
+    sendResponse({
+      allowedSites: ALLOWED_SITES,
+      entertainmentSites: ENTERTAINMENT_SITES,
+      blockedSites: BLOCKED_SITES
+    });
+  } else if (message.type === 'enableEntertainmentOverride') {
+    // Enable override for specified duration (in minutes)
+    const durationMinutes = message.duration || 60; // Default 1 hour
+    const expiry = new Date();
+    expiry.setMinutes(expiry.getMinutes() + durationMinutes);
+
+    settings.entertainmentOverride = true;
+    settings.entertainmentOverrideExpiry = expiry.toISOString();
+
+    // Save to storage
+    browser.storage.local.set({ settings: settings });
+
+    sendResponse({ success: true, expiresAt: expiry.toISOString() });
+  } else if (message.type === 'disableEntertainmentOverride') {
+    settings.entertainmentOverride = false;
+    settings.entertainmentOverrideExpiry = null;
+
+    // Save to storage
+    browser.storage.local.set({ settings: settings });
+
+    sendResponse({ success: true });
   }
   return true;
 });

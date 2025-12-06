@@ -27,7 +27,13 @@ const unlockBtn = document.getElementById('unlockBtn');
 const passwordError = document.getElementById('passwordError');
 const enabledToggle = document.getElementById('enabledToggle');
 const newPasswordInput = document.getElementById('newPassword');
+const allowedSitesTextarea = document.getElementById('allowedSites');
+const entertainmentSitesTextarea = document.getElementById('entertainmentSites');
 const blockedSitesTextarea = document.getElementById('blockedSites');
+const overrideDurationSelect = document.getElementById('overrideDuration');
+const enableOverrideBtn = document.getElementById('enableOverrideBtn');
+const disableOverrideBtn = document.getElementById('disableOverrideBtn');
+const overrideStatus = document.getElementById('overrideStatus');
 const timeRestrictionsToggle = document.getElementById('timeRestrictionsToggle');
 const timeRestrictionsConfig = document.getElementById('timeRestrictionsConfig');
 const startHourSelect = document.getElementById('startHour');
@@ -42,7 +48,8 @@ document.addEventListener('DOMContentLoaded', init);
 async function init() {
   populateHourSelects();
   await loadSettings();
-  await loadBlockedSites();
+  await loadSiteLists();
+  checkOverrideStatus();
   checkPasswordProtection();
   setupEventListeners();
 }
@@ -75,13 +82,51 @@ async function loadSettings() {
   updateUI();
 }
 
-// Load blocked sites from background script
-async function loadBlockedSites() {
-  const response = await browser.runtime.sendMessage({ type: 'getBlockedSites' });
-  if (response && response.blockedSites) {
-    blockedSitesTextarea.value = response.blockedSites.join('\n');
-    document.getElementById('blockedCount').textContent = response.blockedSites.length;
+// Load site lists from background script
+async function loadSiteLists() {
+  const response = await browser.runtime.sendMessage({ type: 'getSiteLists' });
+  if (response) {
+    if (response.allowedSites) {
+      allowedSitesTextarea.value = response.allowedSites.join('\n');
+      document.getElementById('allowedCount').textContent = response.allowedSites.length;
+    }
+    if (response.entertainmentSites) {
+      entertainmentSitesTextarea.value = response.entertainmentSites.join('\n');
+      document.getElementById('entertainmentCount').textContent = response.entertainmentSites.length;
+    }
+    if (response.blockedSites) {
+      blockedSitesTextarea.value = response.blockedSites.join('\n');
+      document.getElementById('blockedCount').textContent = response.blockedSites.length;
+    }
   }
+}
+
+// Check override status
+function checkOverrideStatus() {
+  if (currentSettings.entertainmentOverride && currentSettings.entertainmentOverrideExpiry) {
+    const expiry = new Date(currentSettings.entertainmentOverrideExpiry);
+    const now = new Date();
+
+    if (expiry > now) {
+      // Override is active
+      const minutesLeft = Math.ceil((expiry - now) / 60000);
+      overrideStatus.textContent = `✅ Override active - expires in ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''}`;
+      overrideStatus.style.display = 'block';
+      enableOverrideBtn.style.display = 'none';
+      disableOverrideBtn.style.display = 'inline-block';
+    } else {
+      // Override expired
+      resetOverrideUI();
+    }
+  } else {
+    resetOverrideUI();
+  }
+}
+
+function resetOverrideUI() {
+  overrideStatus.style.display = 'none';
+  enableOverrideBtn.style.display = 'inline-block';
+  disableOverrideBtn.style.display = 'none';
 }
 
 // Check if password is set and show/hide password prompt
@@ -128,6 +173,8 @@ function setupEventListeners() {
   passwordInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleUnlock();
   });
+  enableOverrideBtn.addEventListener('click', handleEnableOverride);
+  disableOverrideBtn.addEventListener('click', handleDisableOverride);
   timeRestrictionsToggle.addEventListener('change', updateTimeRestrictionsVisibility);
   saveBtn.addEventListener('click', saveSettings);
 }
@@ -144,6 +191,46 @@ function handleUnlock() {
     passwordError.classList.remove('hidden');
     passwordInput.value = '';
     passwordInput.focus();
+  }
+}
+
+// Handle enable entertainment override
+async function handleEnableOverride() {
+  if (!isUnlocked && currentSettings.password) {
+    alert('Please unlock settings first by entering the password at the top of the page.');
+    return;
+  }
+
+  const duration = parseInt(overrideDurationSelect.value);
+  const response = await browser.runtime.sendMessage({
+    type: 'enableEntertainmentOverride',
+    duration: duration
+  });
+
+  if (response && response.success) {
+    // Reload settings to get updated override status
+    await loadSettings();
+    checkOverrideStatus();
+    alert(`Entertainment override enabled for ${duration} minutes!`);
+  }
+}
+
+// Handle disable entertainment override
+async function handleDisableOverride() {
+  if (!isUnlocked && currentSettings.password) {
+    alert('Please unlock settings first by entering the password at the top of the page.');
+    return;
+  }
+
+  const response = await browser.runtime.sendMessage({
+    type: 'disableEntertainmentOverride'
+  });
+
+  if (response && response.success) {
+    // Reload settings
+    await loadSettings();
+    resetOverrideUI();
+    alert('Entertainment override disabled.');
   }
 }
 
