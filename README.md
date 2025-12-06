@@ -53,26 +53,45 @@ You can create simple icons using any image editor, or use emoji-to-icon generat
 3. Configure your settings:
    - Enable/disable the extension
    - Set a password (recommended!)
-   - Add blocked websites
    - Configure time restrictions
 
-### Adding Blocked Websites
+**Note:** Blocked websites are configured in the code (see below), not through the UI.
 
-In the "Blocked Websites" section, add one website per line. Examples:
+### Managing Blocked Websites
 
-```
-facebook.com
-youtube.com
-*.reddit.com
-tiktok.com
-twitter.com
-instagram.com
-```
+**Blocked websites are hardcoded in `background.js` for easy synchronization across browsers.**
 
-You can use wildcards (`*`) to block subdomains. For example:
-- `youtube.com` blocks youtube.com
-- `*.youtube.com` blocks all YouTube subdomains
-- `reddit.com` blocks reddit.com
+The UI shows the current blocked list (read-only) but doesn't allow editing. To add or remove blocked sites:
+
+1. Open [`background.js`](background.js) in a text editor
+2. Find the `BLOCKED_SITES` array (around line 9):
+   ```javascript
+   const BLOCKED_SITES = [
+     'facebook.com',
+     'instagram.com',
+     'tiktok.com',
+     'youtube.com',
+     'twitter.com',
+     'reddit.com',
+     'snapchat.com',
+     'twitch.tv'
+   ];
+   ```
+3. Add or remove websites from the list
+4. Save the file
+5. Reload the extension in both Chrome and Firefox
+6. Done! Changes apply immediately
+
+**Wildcard support:**
+- `facebook.com` - blocks facebook.com
+- `*.youtube.com` - blocks all YouTube subdomains
+- `m.facebook.com` - blocks only mobile Facebook
+
+**Why hardcoded?**
+- Single source of truth - edit once, reload in both browsers
+- Always in sync between Chrome and Firefox
+- Simple to manage with version control (Git)
+- Password and time restrictions remain browser-specific and configurable via UI
 
 ### Setting Time Restrictions
 
