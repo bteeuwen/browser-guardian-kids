@@ -87,6 +87,12 @@ The UI shows the current blocked list (read-only) but doesn't allow editing. To 
 - `*.youtube.com` - blocks all YouTube subdomains
 - `m.facebook.com` - blocks only mobile Facebook
 
+**Tips:**
+- One domain per line in the array
+- Don't forget the comma at the end of each line (except the last item)
+- Changes apply to both Chrome and Firefox after reloading
+- The settings page will automatically show the updated list
+
 **Why hardcoded?**
 - Single source of truth - edit once, reload in both browsers
 - Always in sync between Chrome and Firefox
