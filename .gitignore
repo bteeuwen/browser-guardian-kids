@@ -1,0 +1,24 @@
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Extension packaging
+*.xpi
+*.crx
+*.zip
+
+# Icons (if you haven't created them yet)
+icons/*.png
+
+# Logs
+*.log
+
+# Node modules (if you ever add build tools)
+node_modules/
